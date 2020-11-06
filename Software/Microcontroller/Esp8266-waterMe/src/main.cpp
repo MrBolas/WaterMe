@@ -15,7 +15,7 @@
 #define SMSREADPIN 0
 #define SMSVOLTAGE 3.3
 
-#define mqtt_server "192.168.1.90"
+#define mqtt_server "192.168.8.102"
 #define mqtt_user "your_username"
 #define mqtt_password "your_password"
 
@@ -26,8 +26,8 @@ Adafruit_SSD1306 display = Adafruit_SSD1306(128, 32, &Wire);
 DHT dht(DHTPIN, DHTTYPE);
 SoilMoistureSensor SMS1(SMSPOWERPIN, SMSREADPIN, SMSVOLTAGE);
 
-const char* ssid = "The Internet";
-const char* password = "Papaya0721";
+const char* ssid = "Copacabana_Garden";
+const char* password = "pw_copaGarden";
 
 WiFiClient espClient;
 PubSubClient client(espClient);
@@ -116,7 +116,7 @@ void setup() {
 void loop() {
   
   if (!client.connected()) {
-    reconnect();
+    //reconnect();
   }
   client.loop();
 

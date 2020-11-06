@@ -3,5 +3,3 @@
 .vscode/c_cpp_properties.json
 .vscode/launch.json
 .vscode/ipch
-
-Software/MQTT_server/node_modules
