@@ -8,19 +8,22 @@
 #include <DisplayManager/DisplayManager.h>
 #include <SoilMoistureSensor/SoilMoistureSensor.h>
 
-#define DHTTYPE DHT22   // DHT 11 
+#define DHTTYPE DHT22   // DHT 22
 #define DHTPIN 13    
 
 #define SMSPOWERPIN 1
 #define SMSREADPIN 0
 #define SMSVOLTAGE 3.3
 
-#define mqtt_server "192.168.8.102"
-#define mqtt_user "your_username"
-#define mqtt_password "your_password"
+#define mqtt_server "broker.hivemq.com"
+//#define mqtt_user "your_username"
+//#define mqtt_password "your_password"
+
+#define MicroControllerID WiFi.macAddress()
+#define DEEP_SLEEP_TIMER 3e9
 
 #define humidity_topic "sensor/humidity"
-#define temperature_topic "sensor/temperature"
+#define temperature_topic "sensor/temperature"  
 
 Adafruit_SSD1306 display = Adafruit_SSD1306(128, 32, &Wire);
 DHT dht(DHTPIN, DHTTYPE);
@@ -69,7 +72,7 @@ void reconnect() {
     Serial.print("Attempting MQTT connection...");
     // Attempt to connect
     // If you do not want to use a username and password, change next line to
-     if (client.connect("ESP8266Client")) {
+     if (client.connect("client")) {
     //if (client.connect("ESP8266Client", mqtt_user, mqtt_password)) {
       Serial.println("connected");
     } else {
@@ -82,15 +85,30 @@ void reconnect() {
   }
 }
 
-bool checkBound(float newValue, float prevValue, float maxDiff) {
-  return !isnan(newValue) &&
-         (newValue < prevValue - maxDiff || newValue > prevValue + maxDiff);
+void updateOLED(float temp, float hum)
+{
+  display.clearDisplay();
+  display.setCursor(0,0);
+  display.println(WiFi.isConnected() ? WiFi.localIP().toString() : "Disconnected");
+  display.println(MicroControllerID);
+  display.print("T: ");
+  display.print(String(temp).c_str());
+  display.print(" - H: ");
+  display.println(String(hum).c_str());
+  display.display();
 }
 
-long lastMsg = 0;
+void goToSleep()
+{
+  display.clearDisplay();
+  display.display();
+
+  //enter deep sleep in microseconds
+  ESP.deepSleep(DEEP_SLEEP_TIMER); 
+}
+
 float temp = 0.0;
 float hum = 0.0;
-float diff = 1.0;
 
 void setup() {
   //Setup Serial
@@ -116,31 +134,25 @@ void setup() {
 void loop() {
   
   if (!client.connected()) {
-    //reconnect();
+    reconnect();
   }
   client.loop();
+  
+  delay(5000);
+  
+  float temp = dht.readTemperature();
+  float hum = dht.readHumidity();
 
-  long now = millis();
-  if (now - lastMsg > 1000) {
-    lastMsg = now;
+  updateOLED(temp, hum);
 
-    float newTemp = dht.readTemperature();
-    float newHum = dht.readHumidity();
+  Serial.print("New temperature -> ");
+  Serial.println((MicroControllerID+"/"+String(temp)).c_str());
+  client.publish(temperature_topic, (MicroControllerID+"/"+String(temp)).c_str(), true);
+  
+  Serial.print("New humidity -> ");
+  Serial.println((MicroControllerID+"/"+String(hum)).c_str());
+  client.publish(humidity_topic, (MicroControllerID+"/"+String(hum)).c_str(), true);
 
-    if (checkBound(newTemp, temp, diff)) {
-      temp = newTemp;
-      Serial.print("New temperature:");
-      Serial.println(String(temp).c_str());
-      client.publish(temperature_topic, String(temp).c_str(), true);
-    }
-
-    if (checkBound(newHum, hum, diff)) {
-      hum = newHum;
-      Serial.print("New humidity:");
-      Serial.println(String(hum).c_str());
-      client.publish(humidity_topic, String(hum).c_str(), true);
-    }
-  }
-
-  //yield();
+  //goToSleep();
+  
 }
