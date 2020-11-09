@@ -25,12 +25,13 @@
 //#define mqtt_password "your_password"
 
 #define MicroControllerID WiFi.macAddress()
-#define DEEP_SLEEP_TIMER 3e9
 
-#define WAKE_UP_TIME 30e3
+#define DEEP_SLEEP_TIMER 3e8  //microseconds
+#define WAKE_UP_TIME 5e3     //milliseconds
 
-#define humidity_topic "sensor/humidity"
-#define temperature_topic "sensor/temperature"
+#define humidity_topic "WaterMe/humidity"
+#define temperature_topic "WaterMe/temperature"
+#define soilMoisture_topic "WaterMe/soil_moisture"
 
 Adafruit_SSD1306 OLED = Adafruit_SSD1306(128, 32, &Wire);
 
@@ -95,27 +96,6 @@ void updateOLED()
   //Mac Adress
   OLED.println(MicroControllerID);
 
-/*
-  // Temperature and Humidity Sensor 1
-  OLED.print("T1: ");
-  OLED.print(String(dht_temp_1).c_str());
-  OLED.print(" - H1: ");
-  OLED.println(String(dht_hum_1).c_str());
-
-  // Temperature and Humidity Sensor 2
-  OLED.print("T2: ");
-  OLED.print(String(dht_temp_2).c_str());
-  OLED.print(" - H2: ");
-  OLED.println(String(dht_hum_2).c_str());
-
-  // Vertical Moisture Bars
-  OLED.drawRect(112,0,8,32,1);
-  OLED.fillRect(112,32-32*(SMS1_voltage/SMSVOLTAGE),8,32*(SMS1_voltage/SMSVOLTAGE),1);
-
-  OLED.drawRect(120,0,8,32,1);
-  OLED.fillRect(120,32-32*(SMS2_voltage/SMSVOLTAGE),8,32*(SMS2_voltage/SMSVOLTAGE),1);
-*/
-
   // Horizontal Moisture Bars for Pot 1
   OLED.drawRect(0,16,50,8,1);
   OLED.fillRect(0,16,50*(SMS1_voltage/SMSVOLTAGE),8,1);
@@ -131,9 +111,6 @@ void updateOLED()
   OLED.print("Pot2");
   OLED.drawRect(78,24,50,8,1);
   OLED.fillRect(128-78*(SMS4_voltage/SMSVOLTAGE),24,128-78*(SMS4_voltage/SMSVOLTAGE),8,1);
-
-  //OLED.drawRect(120,0,8,32,1);
-  //OLED.fillRect(120,32-32*(SMS2_voltage/SMSVOLTAGE),8,32*(SMS2_voltage/SMSVOLTAGE),1);
 
   OLED.display();
 }
@@ -232,6 +209,12 @@ void setup() {
   pinMode(SMS2POWERPIN, OUTPUT);
   digitalWrite(SMS2POWERPIN, LOW);
 
+  pinMode(SMS3POWERPIN, OUTPUT);
+  digitalWrite(SMS3POWERPIN, LOW);
+  
+  pinMode(SMS4POWERPIN, OUTPUT);
+  digitalWrite(SMS4POWERPIN, LOW);
+
   //initializa DHT22 sensors
   dht1.begin();
   dht2.begin();
@@ -247,7 +230,7 @@ void loop() {
   }
   client.loop();
 
-  unsigned long time = 0;
+  unsigned long time = millis();
 
   // Acquire Sensor information
   SMS1.turnPowerOn();
@@ -285,42 +268,44 @@ void loop() {
   // Update Serial and MQTT Broker
   Serial.print("New temperature DHT_1 -> ");
   Serial.println((MicroControllerID+"/"+String(dht_temp_1)).c_str());
-  client.publish(temperature_topic, (MicroControllerID+"/Sensor1/"+String(dht_temp_1)).c_str(), true);
+  client.publish(temperature_topic, (MicroControllerID+"/DHT1/"+String(dht_temp_1)).c_str(), true);
   
   Serial.print("New humidity DHT_1 -> ");
   Serial.println((MicroControllerID+"/"+String(dht_hum_1)).c_str());
-  client.publish(humidity_topic, (MicroControllerID+"/Sensor1/"+String(dht_hum_1)).c_str(), true);
+  client.publish(humidity_topic, (MicroControllerID+"/DHT1/"+String(dht_hum_1)).c_str(), true);
 
   Serial.print("New temperature DHT_2 -> ");
   Serial.println((MicroControllerID+"/"+String(dht_temp_2)).c_str());
-  client.publish(temperature_topic, (MicroControllerID+"/Sensor2/"+String(dht_temp_2)).c_str(), true);
+  client.publish(temperature_topic, (MicroControllerID+"/DHT2/"+String(dht_temp_2)).c_str(), true);
   
   Serial.print("New humidity DHT_2 -> ");
   Serial.println((MicroControllerID+"/"+String(dht_hum_2)).c_str());
-  client.publish(humidity_topic, (MicroControllerID+"/Sensor2/"+String(dht_hum_2)).c_str(), true);
+  client.publish(humidity_topic, (MicroControllerID+"/DHT2/"+String(dht_hum_2)).c_str(), true);
 
   Serial.print("New SMS1 value -> ");
   Serial.println((MicroControllerID+"/"+String(SMS1_voltage)).c_str());
-  client.publish(temperature_topic, (MicroControllerID+"/"+String(SMS1_voltage)).c_str(), true);
+  client.publish(soilMoisture_topic, (MicroControllerID+"/SMS1/"+String(SMS1_voltage)).c_str(), true);
   
   Serial.print("New SMS2 value -> ");
   Serial.println((MicroControllerID+"/"+String(SMS2_voltage)).c_str());
-  client.publish(temperature_topic, (MicroControllerID+"/"+String(SMS2_voltage)).c_str(), true);
+  client.publish(soilMoisture_topic, (MicroControllerID+"/SMS2/"+String(SMS2_voltage)).c_str(), true);
 
   Serial.print("New SMS3 value -> ");
   Serial.println((MicroControllerID+"/"+String(SMS3_voltage)).c_str());
-  client.publish(temperature_topic, (MicroControllerID+"/"+String(SMS3_voltage)).c_str(), true);
+  client.publish(soilMoisture_topic, (MicroControllerID+"/SMS3/"+String(SMS3_voltage)).c_str(), true);
   
   Serial.print("New SMS4 value -> ");
   Serial.println((MicroControllerID+"/"+String(SMS4_voltage)).c_str());
-  client.publish(temperature_topic, (MicroControllerID+"/"+String(SMS4_voltage)).c_str(), true);
+  client.publish(soilMoisture_topic, (MicroControllerID+"/SMS4/"+String(SMS4_voltage)).c_str(), true);
 
+/*
   if ((SMS1.beingWatered() 
   || SMS2.beingWatered() 
   || SMS3.beingWatered() 
   || SMS4.beingWatered()) 
-  && time == 0
-  && false) // testing for now. Should not use deepsleep cycle
+  && time == 0) // testing for now. Should not use deepsleep cycle
+  */
+  if(false)
   {
     time = millis(); 
   }else if(time > WAKE_UP_TIME){

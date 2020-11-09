@@ -2,8 +2,9 @@ var mqtt    = require('mqtt');
 var client  = mqtt.connect("mqtt://broker.hivemq.com",{port:1883});
 //var client  = mqtt.connect("broker.hivemq.com",{port:1883});
 
-const humidity_topic = "sensor/humidity";
-const temperature_topic = "sensor/temperature";
+const humidity_topic = "WaterMe/humidity";
+const temperature_topic = "WaterMe/temperature";
+const soilMoisture_topic = "WaterMe/soil_moisture"
 
 client.on("connect",function(){	
   client.subscribe(temperature_topic, function (err) {
@@ -17,6 +18,13 @@ client.on("connect",function(){
     if (!err) {
       //console.log('humidity subscribed');
       client.publish(humidity_topic, 'Received Humidity')
+    }
+  })
+
+  client.subscribe(soilMoisture_topic, function (err) {
+    if (!err) {
+      //console.log('humidity subscribed');
+      client.publish(humidity_topic, 'Received SMS')
     }
   })
 })
