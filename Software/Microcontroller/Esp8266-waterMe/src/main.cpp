@@ -27,8 +27,10 @@
 #define MicroControllerID WiFi.macAddress()
 #define DEEP_SLEEP_TIMER 3e9
 
+#define WAKE_UP_TIME 30e3
+
 #define humidity_topic "sensor/humidity"
-#define temperature_topic "sensor/temperature"  
+#define temperature_topic "sensor/temperature"
 
 Adafruit_SSD1306 OLED = Adafruit_SSD1306(128, 32, &Wire);
 
@@ -49,11 +51,11 @@ const char* password = "pw_copaGarden";
 WiFiClient espClient;
 PubSubClient client(espClient);
 
-float dht_temp_1 = NAN;
-float dht_hum_1 = NAN;
+int dht_temp_1 = 0;
+int dht_hum_1 = 0;
 
-float dht_temp_2 = NAN;
-float dht_hum_2 = NAN;
+int dht_temp_2 = 0;
+int dht_hum_2 = 0;
 
 float SMS1_voltage = NAN;
 float SMS2_voltage = NAN;
@@ -71,17 +73,25 @@ void updateOLED()
   //Temperature and Humidity
   OLED.setCursor(80,0);
   OLED.print("T:");
-  int temp_avg = (int)(dht_temp_1+dht_temp_2)/2;
-  if (dht_temp_1 == NAN)
+  int reported_temp = dht_temp_1 != 0 ? dht_temp_2 != 0 ? (dht_temp_1+dht_temp_2)/2 : dht_temp_1 : 0;
+  int reported_hum = dht_hum_1 != 0 ? dht_hum_2 != 0 ? (dht_hum_1+dht_hum_2)/2 : dht_hum_1 : 0;
+
+  if (reported_temp == 0)
   {
-    OLED.println("-");
+    OLED.print("- ");
   }else{
-    OLED.println(String(temp_avg).c_str());
+    OLED.print(reported_temp);
   }
 
-  //OLED.println(dht_hum_1 == NAN ? "-" : String(hum_avg).c_str());
-  //OLED.println("-");
+  OLED.print("H:");
   
+  if (reported_hum == 0)
+  {
+    OLED.println("- ");
+  }else{
+    OLED.println(reported_hum);
+  }
+
   //Mac Adress
   OLED.println(MicroControllerID);
 
@@ -126,6 +136,29 @@ void updateOLED()
   //OLED.fillRect(120,32-32*(SMS2_voltage/SMSVOLTAGE),8,32*(SMS2_voltage/SMSVOLTAGE),1);
 
   OLED.display();
+}
+
+void readingVerification()
+{
+  if (dht_temp_1 > 120)
+  {
+    dht_temp_1 = 0;
+  }
+  
+  if (dht_temp_2 > 120)
+  {
+    dht_temp_2 = 0;
+  }
+
+  if (dht_hum_1 > 120)
+  {
+    dht_hum_1 = 0;
+  }
+
+  if (dht_hum_2 > 120)
+  {
+    dht_hum_2 = 0;
+  }
 }
 
 void setup_wifi() {
@@ -214,24 +247,26 @@ void loop() {
   }
   client.loop();
 
+  unsigned long time = 0;
+
   // Acquire Sensor information
   SMS1.turnPowerOn();
-  delay(1000);
+  delay(250);
   SMS1_voltage = SMS1.readSensorVoltage();
   SMS1.turnPowerOff();
 
   SMS2.turnPowerOn();
-  delay(1000);
+  delay(250);
   SMS2_voltage = SMS2.readSensorVoltage();
   SMS2.turnPowerOff();
 
   SMS3.turnPowerOn();
-  delay(1000);
+  delay(250);
   SMS3_voltage = SMS3.readSensorVoltage();
   SMS3.turnPowerOff();
 
   SMS4.turnPowerOn();
-  delay(1000);
+  delay(250);
   SMS4_voltage = SMS4.readSensorVoltage();
   SMS4.turnPowerOff();
 
@@ -240,6 +275,9 @@ void loop() {
 
   dht_temp_2 = dht2.readTemperature();
   dht_hum_2 = dht2.readHumidity();
+
+  //Reading Verification
+  readingVerification();
 
   //Update OLED
   updateOLED();
@@ -277,5 +315,17 @@ void loop() {
   Serial.println((MicroControllerID+"/"+String(SMS4_voltage)).c_str());
   client.publish(temperature_topic, (MicroControllerID+"/"+String(SMS4_voltage)).c_str(), true);
 
-  //goToSleep();
+  if ((SMS1.beingWatered() 
+  || SMS2.beingWatered() 
+  || SMS3.beingWatered() 
+  || SMS4.beingWatered()) 
+  && time == 0
+  && false) // testing for now. Should not use deepsleep cycle
+  {
+    time = millis(); 
+  }else if(time > WAKE_UP_TIME){
+    time = 0;
+    goToSleep();
+  }
+  
 }

@@ -13,6 +13,8 @@ private:
         float voltage;
     } PowerPin, SensorPin;
 
+    float previousSensorReading = 0;
+    float sensorReading = 0;
     float slope = 2.48; // slope from linear fit
     float intercept = -0.72; // intercept from linear fit
 
@@ -23,6 +25,7 @@ public:
     float readSensorVoltage();
     float getWaterVolume();
     float getSensorPercentage();
+    bool beingWatered();
 
     // PowerPin
     int getPowerPinIndex();

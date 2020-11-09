@@ -18,9 +18,16 @@ SoilMoistureSensor::SoilMoistureSensor(int power_pin_index, int sensor_pin_index
 
 SoilMoistureSensor::~SoilMoistureSensor(){}
 
+bool SoilMoistureSensor::beingWatered()
+{
+    return this->previousSensorReading < this->sensorReading;
+}
+
 float SoilMoistureSensor::readSensorVoltage()
 {
-    return float(float(analogRead(SensorPin.pin_index))/1023.0)*PowerPin.voltage;
+    this->previousSensorReading = sensorReading;
+    this->sensorReading = float(float(analogRead(SensorPin.pin_index))/1023.0)*PowerPin.voltage;
+    return sensorReading;
 }
 
 float SoilMoistureSensor::getWaterVolume()
