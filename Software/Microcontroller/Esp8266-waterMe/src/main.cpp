@@ -2,7 +2,6 @@
 #include <Wire.h>
 #include <DHT.h>
 #include <Arduino.h>
-#include <vector>
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
 #include <Adafruit_GFX.h>
@@ -16,6 +15,8 @@
 
 #define SMS1POWERPIN 15
 #define SMS2POWERPIN 12
+#define SMS3POWERPIN 13
+#define SMS4POWERPIN 14
 #define SMSREADPIN A0
 #define SMSVOLTAGE 3.3
 
@@ -34,8 +35,13 @@ Adafruit_SSD1306 OLED = Adafruit_SSD1306(128, 32, &Wire);
 DHT dht1(DHT1PIN, DHTTYPE);
 DHT dht2(DHT2PIN, DHTTYPE);
 
+//Flower Pot1
 SoilMoistureSensor SMS1(SMS1POWERPIN, SMSREADPIN, SMSVOLTAGE);
 SoilMoistureSensor SMS2(SMS2POWERPIN, SMSREADPIN, SMSVOLTAGE);
+
+//Flower Pot 2
+SoilMoistureSensor SMS3(SMS3POWERPIN, SMSREADPIN, SMSVOLTAGE);
+SoilMoistureSensor SMS4(SMS4POWERPIN, SMSREADPIN, SMSVOLTAGE);
 
 const char* ssid = "Copacabana_Garden";
 const char* password = "pw_copaGarden";
@@ -51,6 +57,8 @@ float dht_hum_2 = NAN;
 
 float SMS1_voltage = NAN;
 float SMS2_voltage = NAN;
+float SMS3_voltage = NAN;
+float SMS4_voltage = NAN;
 
 void updateOLED()
 {
@@ -58,11 +66,26 @@ void updateOLED()
   OLED.setCursor(0,0);
   
   //IP / connection Status
-  OLED.println(WiFi.isConnected() ? WiFi.localIP().toString() : "Disconnected");
+  OLED.print(WiFi.isConnected() ? WiFi.localIP().toString() : "Disconnected");
+
+  //Temperature and Humidity
+  OLED.setCursor(80,0);
+  OLED.print("T:");
+  int temp_avg = (int)(dht_temp_1+dht_temp_2)/2;
+  if (dht_temp_1 == NAN)
+  {
+    OLED.println("-");
+  }else{
+    OLED.println(String(temp_avg).c_str());
+  }
+
+  //OLED.println(dht_hum_1 == NAN ? "-" : String(hum_avg).c_str());
+  //OLED.println("-");
   
   //Mac Adress
   OLED.println(MicroControllerID);
 
+/*
   // Temperature and Humidity Sensor 1
   OLED.print("T1: ");
   OLED.print(String(dht_temp_1).c_str());
@@ -81,6 +104,26 @@ void updateOLED()
 
   OLED.drawRect(120,0,8,32,1);
   OLED.fillRect(120,32-32*(SMS2_voltage/SMSVOLTAGE),8,32*(SMS2_voltage/SMSVOLTAGE),1);
+*/
+
+  // Horizontal Moisture Bars for Pot 1
+  OLED.drawRect(0,16,50,8,1);
+  OLED.fillRect(0,16,50*(SMS1_voltage/SMSVOLTAGE),8,1);
+  OLED.setCursor(52,16);
+  OLED.print("Pot1");
+  OLED.drawRect(78,16,50,8,1);
+  OLED.fillRect(128-78*(SMS2_voltage/SMSVOLTAGE),16,128-78*(SMS2_voltage/SMSVOLTAGE),8,1);
+  
+  // Horizontal Moisture Bars for Pot 2
+  OLED.drawRect(0,24,50,8,1);
+  OLED.fillRect(0,24,50*(SMS3_voltage/SMSVOLTAGE),8,1);
+  OLED.setCursor(52,24);
+  OLED.print("Pot2");
+  OLED.drawRect(78,24,50,8,1);
+  OLED.fillRect(128-78*(SMS4_voltage/SMSVOLTAGE),24,128-78*(SMS4_voltage/SMSVOLTAGE),8,1);
+
+  //OLED.drawRect(120,0,8,32,1);
+  //OLED.fillRect(120,32-32*(SMS2_voltage/SMSVOLTAGE),8,32*(SMS2_voltage/SMSVOLTAGE),1);
 
   OLED.display();
 }
@@ -173,14 +216,24 @@ void loop() {
 
   // Acquire Sensor information
   SMS1.turnPowerOn();
-  delay(5000);
+  delay(1000);
   SMS1_voltage = SMS1.readSensorVoltage();
   SMS1.turnPowerOff();
 
   SMS2.turnPowerOn();
-  delay(5000);
+  delay(1000);
   SMS2_voltage = SMS2.readSensorVoltage();
   SMS2.turnPowerOff();
+
+  SMS3.turnPowerOn();
+  delay(1000);
+  SMS3_voltage = SMS3.readSensorVoltage();
+  SMS3.turnPowerOff();
+
+  SMS4.turnPowerOn();
+  delay(1000);
+  SMS4_voltage = SMS4.readSensorVoltage();
+  SMS4.turnPowerOff();
 
   dht_temp_1 = dht1.readTemperature();
   dht_hum_1 = dht1.readHumidity();
@@ -215,6 +268,14 @@ void loop() {
   Serial.print("New SMS2 value -> ");
   Serial.println((MicroControllerID+"/"+String(SMS2_voltage)).c_str());
   client.publish(temperature_topic, (MicroControllerID+"/"+String(SMS2_voltage)).c_str(), true);
+
+  Serial.print("New SMS3 value -> ");
+  Serial.println((MicroControllerID+"/"+String(SMS3_voltage)).c_str());
+  client.publish(temperature_topic, (MicroControllerID+"/"+String(SMS3_voltage)).c_str(), true);
+  
+  Serial.print("New SMS4 value -> ");
+  Serial.println((MicroControllerID+"/"+String(SMS4_voltage)).c_str());
+  client.publish(temperature_topic, (MicroControllerID+"/"+String(SMS4_voltage)).c_str(), true);
 
   //goToSleep();
 }
