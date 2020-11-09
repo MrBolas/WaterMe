@@ -7,7 +7,7 @@ DisplayManager::DisplayManager(int width, int height)
 {
     this->display.height = height;
     this->display.width = width;
-    this->display.number_of_messages = 0;
+    this->display.max_number_of_messages = height/8;
     
     this->display.screen = Adafruit_SSD1306(width, height, &Wire);
     this->display.screen.begin(SSD1306_SWITCHCAPVCC, 0x3C); // Address 0x3C for 128x32
@@ -22,25 +22,21 @@ DisplayManager::DisplayManager(int width, int height)
 
 DisplayManager::~DisplayManager(){}
 
-void DisplayManager::updateDisplay(String message)
-{
-    this->display.screen.setCursor(0,0);
-    this->display.screen.print(message);
-    this->display.screen.display();
-
-}
-
 void DisplayManager::updateDisplay()
 {
     this->display.screen.setCursor(0,0);
 
     if (this->display.view_mode == DisplayFormat::AlwaysOn)
     {
-        int allowed_number_of_lines = display.height/8;
-
-        for (int i = 0; i < allowed_number_of_lines; i++)
+        for (int i = 0; i < this->display.max_number_of_messages; i++)
         {
-            this->display.screen.println(display.messages[i]);
+            if (this->display.messages[i] != nullptr)
+            {
+                this->display.screen.println(*this->display.messages[i]);
+            }else{
+                this->display.screen.println("");
+            }
+            
         }
     }
     this->display.screen.display();
@@ -54,42 +50,67 @@ void DisplayManager::clearDisplay()
 
 void DisplayManager::addLine(String new_line)
 {
-    this->display.messages[++this->display.number_of_messages] = new_line;
+    for (int i = 0; i < this->display.max_number_of_messages; i++)
+    {
+        if (this->display.messages[i] == nullptr)
+        {
+            this->display.messages[i] = & new_line;
+        }
+    }
+    this->updateDisplay();
 }
 
 void DisplayManager::addLine(String description, float value)
 {
-    this->display.messages[++this->display.number_of_messages] = description + value;
+    for (int i = 0; i < this->display.max_number_of_messages; i++)
+    {
+        if (this->display.messages[i] == nullptr)
+        {
+            String new_line = description+" "+String(value).c_str();
+            this->display.messages[i] = & new_line;
+        }
+    }
+    this->updateDisplay();
 }
 
-String DisplayManager::removeLine(int index)
+void DisplayManager::setLine(String new_line, int index)
 {
-    if (index<this->display.number_of_messages)
+    if (index < this->display.max_number_of_messages)
     {
-        String deleted_message = this->display.messages[index];
-        this->display.messages->remove(index);
-        this->display.number_of_messages--;
-        return deleted_message;
+        this->display.messages[index] = & new_line;
     }
-    return "";
+    this->updateDisplay();
 }
 
-bool DisplayManager::removeAllLines()
+void DisplayManager::setLine(String description, float value, int index)
 {
-    for (size_t i = 0; i < this->display.messages->length(); i++)
+    if (index < this->display.max_number_of_messages)
     {
-        this->display.messages->remove(i);
+        String new_line = description+" "+String(value).c_str();
+        this->display.messages[index] = & new_line;
     }
-
-    if (this->display.messages->isEmpty())
-    {
-        this->display.number_of_messages = 0;
-        return true;
-    }
-    return false;
+    this->updateDisplay();
 }
 
-Adafruit_SSD1306 DisplayManager::getScreen()
+void DisplayManager::resetLine(int index)
 {
-    return this->display.screen;
+    if (index < this->display.max_number_of_messages)
+    {
+        this->display.messages[index] = nullptr;
+    }
+    this->updateDisplay();
+}
+
+void DisplayManager::resetAllLines()
+{
+    for (int i = 0; i < this->display.max_number_of_messages; i++)
+    {
+        this->display.messages[i] = nullptr;
+    }
+    this->updateDisplay();
+}
+
+String* DisplayManager::getMessage(int index)
+{
+    return this->display.messages[index];
 }

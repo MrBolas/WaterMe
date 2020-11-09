@@ -22,11 +22,14 @@ public:
 
     float readSensorVoltage();
     float getWaterVolume();
+    float getSensorPercentage();
 
     // PowerPin
     int getPowerPinIndex();
     bool getPowerPinPowerState();
     float getPowerPinMaxVoltage();
+    void turnPowerOn();
+    void turnPowerOff();
 
     // SensorPin
     int getSensorPinIndex();

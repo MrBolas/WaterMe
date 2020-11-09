@@ -1,3 +1,4 @@
+#include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 
 class DisplayManager
@@ -15,8 +16,8 @@ struct DisplayOptions
 {
     Adafruit_SSD1306 screen;
     enum DisplayFormat view_mode;
-    String messages[];
-    int number_of_messages;
+    String* messages[8];
+    int max_number_of_messages;
     int width;
     int height;
 } display;
@@ -27,17 +28,17 @@ public:
     ~DisplayManager();
 
     void updateDisplay();
-    void updateDisplay(String message);
     void clearDisplay();
 
     void addLine(String new_line);
     void addLine(String description, float value);
-    
-    String removeLine(int index);
-    bool removeAllLines();
 
-    Adafruit_SSD1306 getScreen();
+    void setLine(String new_line, int index);
+    void setLine(String description, float value, int index);
     
-    
+    void resetLine(int index);
+    void resetAllLines();
+
+    String* getMessage(int index);
 };
 

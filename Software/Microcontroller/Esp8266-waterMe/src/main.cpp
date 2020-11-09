@@ -1,18 +1,22 @@
 #include <SPI.h>
 #include <Wire.h>
 #include <DHT.h>
+#include <Arduino.h>
+#include <vector>
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
-#include <DisplayManager/DisplayManager.h>
 #include <SoilMoistureSensor/SoilMoistureSensor.h>
 
 #define DHTTYPE DHT22   // DHT 22
-#define DHTPIN 13    
 
-#define SMSPOWERPIN 1
-#define SMSREADPIN 0
+#define DHT1PIN 0    
+#define DHT2PIN 3    
+
+#define SMS1POWERPIN 15
+#define SMS2POWERPIN 12
+#define SMSREADPIN A0
 #define SMSVOLTAGE 3.3
 
 #define mqtt_server "broker.hivemq.com"
@@ -25,9 +29,13 @@
 #define humidity_topic "sensor/humidity"
 #define temperature_topic "sensor/temperature"  
 
-Adafruit_SSD1306 display = Adafruit_SSD1306(128, 32, &Wire);
-DHT dht(DHTPIN, DHTTYPE);
-SoilMoistureSensor SMS1(SMSPOWERPIN, SMSREADPIN, SMSVOLTAGE);
+Adafruit_SSD1306 OLED = Adafruit_SSD1306(128, 32, &Wire);
+
+DHT dht1(DHT1PIN, DHTTYPE);
+DHT dht2(DHT2PIN, DHTTYPE);
+
+SoilMoistureSensor SMS1(SMS1POWERPIN, SMSREADPIN, SMSVOLTAGE);
+SoilMoistureSensor SMS2(SMS2POWERPIN, SMSREADPIN, SMSVOLTAGE);
 
 const char* ssid = "Copacabana_Garden";
 const char* password = "pw_copaGarden";
@@ -35,21 +43,60 @@ const char* password = "pw_copaGarden";
 WiFiClient espClient;
 PubSubClient client(espClient);
 
+float dht_temp_1 = NAN;
+float dht_hum_1 = NAN;
+
+float dht_temp_2 = NAN;
+float dht_hum_2 = NAN;
+
+float SMS1_voltage = NAN;
+float SMS2_voltage = NAN;
+
+void updateOLED()
+{
+  OLED.clearDisplay();
+  OLED.setCursor(0,0);
+  
+  //IP / connection Status
+  OLED.println(WiFi.isConnected() ? WiFi.localIP().toString() : "Disconnected");
+  
+  //Mac Adress
+  OLED.println(MicroControllerID);
+
+  // Temperature and Humidity Sensor 1
+  OLED.print("T1: ");
+  OLED.print(String(dht_temp_1).c_str());
+  OLED.print(" - H1: ");
+  OLED.println(String(dht_hum_1).c_str());
+
+  // Temperature and Humidity Sensor 2
+  OLED.print("T2: ");
+  OLED.print(String(dht_temp_2).c_str());
+  OLED.print(" - H2: ");
+  OLED.println(String(dht_hum_2).c_str());
+
+  // Vertical Moisture Bars
+  OLED.drawRect(112,0,8,32,1);
+  OLED.fillRect(112,32-32*(SMS1_voltage/SMSVOLTAGE),8,32*(SMS1_voltage/SMSVOLTAGE),1);
+
+  OLED.drawRect(120,0,8,32,1);
+  OLED.fillRect(120,32-32*(SMS2_voltage/SMSVOLTAGE),8,32*(SMS2_voltage/SMSVOLTAGE),1);
+
+  OLED.display();
+}
+
 void setup_wifi() {
   delay(10);
   // We start by connecting to a WiFi network
   Serial.println();
   Serial.print("Connecting to ");
   Serial.println(ssid);
-  display.print("Connecting to ");
-  display.println(ssid);
 
   WiFi.begin(ssid, password);
 
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
-
   }
   
   Serial.println("");
@@ -57,13 +104,7 @@ void setup_wifi() {
   Serial.println("IP address: ");
   Serial.println(WiFi.localIP());
  
-  display.clearDisplay();
-  display.setCursor(0,0);
-  display.println("WiFi connected");
-  display.println("IP address: ");
-  display.println(WiFi.localIP());
-  display.display();
-
+  updateOLED();
 }
 
 void reconnect() {
@@ -85,49 +126,41 @@ void reconnect() {
   }
 }
 
-void updateOLED(float temp, float hum)
-{
-  display.clearDisplay();
-  display.setCursor(0,0);
-  display.println(WiFi.isConnected() ? WiFi.localIP().toString() : "Disconnected");
-  display.println(MicroControllerID);
-  display.print("T: ");
-  display.print(String(temp).c_str());
-  display.print(" - H: ");
-  display.println(String(hum).c_str());
-  display.display();
-}
-
 void goToSleep()
 {
-  display.clearDisplay();
-  display.display();
+  OLED.clearDisplay();
+  OLED.display();
 
   //enter deep sleep in microseconds
   ESP.deepSleep(DEEP_SLEEP_TIMER); 
 }
 
-float temp = 0.0;
-float hum = 0.0;
-
 void setup() {
   //Setup Serial
   Serial.begin(115200);
 
-  display.begin(SSD1306_SWITCHCAPVCC, 0x3C); // Address 0x3C for 128x32
-  display.setCursor(0,0);
-  display.setTextSize(1);
-  display.setTextColor(SSD1306_WHITE);
-  display.clearDisplay();
-  display.display();
+  OLED.begin(SSD1306_SWITCHCAPVCC, 0x3C); // Address 0x3C for 128x32
+  OLED.setCursor(0,0);
+  OLED.setTextSize(1);
+  OLED.setTextColor(SSD1306_WHITE);
+  updateOLED();
 
   //Setup Wifi
   setup_wifi();
   client.setServer(mqtt_server, 1883);
 
-  // Begin DHT readings
-  dht.begin();
+  // Turn ON both SMS
+  pinMode(SMS1POWERPIN, OUTPUT);
+  digitalWrite(SMS1POWERPIN, LOW);
+  
+  pinMode(SMS2POWERPIN, OUTPUT);
+  digitalWrite(SMS2POWERPIN, LOW);
 
+  //initializa DHT22 sensors
+  dht1.begin();
+  dht2.begin();
+
+  // Delay to initialize DHT22 sensors
   delay(1000);
 }
 
@@ -137,22 +170,51 @@ void loop() {
     reconnect();
   }
   client.loop();
-  
+
+  // Acquire Sensor information
+  SMS1.turnPowerOn();
   delay(5000);
-  
-  float temp = dht.readTemperature();
-  float hum = dht.readHumidity();
+  SMS1_voltage = SMS1.readSensorVoltage();
+  SMS1.turnPowerOff();
 
-  updateOLED(temp, hum);
+  SMS2.turnPowerOn();
+  delay(5000);
+  SMS2_voltage = SMS2.readSensorVoltage();
+  SMS2.turnPowerOff();
 
-  Serial.print("New temperature -> ");
-  Serial.println((MicroControllerID+"/"+String(temp)).c_str());
-  client.publish(temperature_topic, (MicroControllerID+"/"+String(temp)).c_str(), true);
+  dht_temp_1 = dht1.readTemperature();
+  dht_hum_1 = dht1.readHumidity();
+
+  dht_temp_2 = dht2.readTemperature();
+  dht_hum_2 = dht2.readHumidity();
+
+  //Update OLED
+  updateOLED();
+
+  // Update Serial and MQTT Broker
+  Serial.print("New temperature DHT_1 -> ");
+  Serial.println((MicroControllerID+"/"+String(dht_temp_1)).c_str());
+  client.publish(temperature_topic, (MicroControllerID+"/Sensor1/"+String(dht_temp_1)).c_str(), true);
   
-  Serial.print("New humidity -> ");
-  Serial.println((MicroControllerID+"/"+String(hum)).c_str());
-  client.publish(humidity_topic, (MicroControllerID+"/"+String(hum)).c_str(), true);
+  Serial.print("New humidity DHT_1 -> ");
+  Serial.println((MicroControllerID+"/"+String(dht_hum_1)).c_str());
+  client.publish(humidity_topic, (MicroControllerID+"/Sensor1/"+String(dht_hum_1)).c_str(), true);
+
+  Serial.print("New temperature DHT_2 -> ");
+  Serial.println((MicroControllerID+"/"+String(dht_temp_2)).c_str());
+  client.publish(temperature_topic, (MicroControllerID+"/Sensor2/"+String(dht_temp_2)).c_str(), true);
+  
+  Serial.print("New humidity DHT_2 -> ");
+  Serial.println((MicroControllerID+"/"+String(dht_hum_2)).c_str());
+  client.publish(humidity_topic, (MicroControllerID+"/Sensor2/"+String(dht_hum_2)).c_str(), true);
+
+  Serial.print("New SMS1 value -> ");
+  Serial.println((MicroControllerID+"/"+String(SMS1_voltage)).c_str());
+  client.publish(temperature_topic, (MicroControllerID+"/"+String(SMS1_voltage)).c_str(), true);
+  
+  Serial.print("New SMS2 value -> ");
+  Serial.println((MicroControllerID+"/"+String(SMS2_voltage)).c_str());
+  client.publish(temperature_topic, (MicroControllerID+"/"+String(SMS2_voltage)).c_str(), true);
 
   //goToSleep();
-  
 }
