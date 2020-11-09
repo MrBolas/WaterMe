@@ -1,3 +1,4 @@
+require('log-timestamp');
 var mqtt    = require('mqtt');
 var client  = mqtt.connect("mqtt://broker.hivemq.com",{port:1883});
 //var client  = mqtt.connect("broker.hivemq.com",{port:1883});
