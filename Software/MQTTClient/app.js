@@ -13,14 +13,15 @@ db.once('open', function() {
   console.log("Database connected.")
 });
 
-var client  = mqtt.connect("mqtt://test.mosquitto.org",{port:1883});
+//var client  = mqtt.connect("mqtt://test.mosquitto.org",{port:1883});
+var client  = mqtt.connect("mqtt://94.62.211.190",{port:1883});
 console.log("MQTT connected.")
 
 client.on("connect",function(){	
   client.subscribe(main_topic, function (err) {
     if (!err) {
       console.log('WaterMe subscribed');
-      //client.publish(temperature_topic, 'Received Temperature')
+      client.publish(main_topic, 'Received Temperature')
     }
   })
   

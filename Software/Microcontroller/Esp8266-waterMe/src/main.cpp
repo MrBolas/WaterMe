@@ -24,7 +24,7 @@
 #define SMSREADPIN A0
 #define SMSVOLTAGE 3.3
 
-#define mqtt_server "test.mosquitto.org"
+#define mqtt_server "94.62.211.190"
 //#define mqtt_user "your_username"
 //#define mqtt_password "your_password"
 
