@@ -1,8 +1,7 @@
-require('log-timestamp');
-const mongoose = require('mongoose');
+                    require('log-timestamp');
+const mongoose =    require('mongoose');
+var mqtt =          require('mqtt');
 const MController = require("./models/microController");
-var mqtt    = require('mqtt');
-const microController = require('./models/microController');
 
 const main_topic = "WaterMe";
 
@@ -21,7 +20,7 @@ client.on("connect",function(){
   client.subscribe(main_topic, function (err) {
     if (!err) {
       console.log('WaterMe subscribed');
-      client.publish(main_topic, 'Received Temperature')
+      client.publish(main_topic, 'MQTT Server worker subscribed');
     }
   })
   
@@ -40,115 +39,90 @@ client.on('message', function (topic, message) {
     })
   }
 
-  let splited_message = message.toString().split("/");
-  const mController = splited_message[0];
-  const acquired_sensor = splited_message[1];
-  const reading_value = splited_message[2];
-
-  const dummy_message = {
-    mac_address: "Mac Adress",
-    sensors: 
-    [{
-      type: "DHT1",
-      readings:{
-        value: 5,
-        time: Date.now().toString()
-      }
-    },
-    {
-      type: "DHT2",
-      readings:{
-        value: 6,
-        time: Date.now().toString()
-      }
-    },
-    {
-      type: "SMS1",
-      readings:{
-        value: 3,
-        time: Date.now().toString()
-      }
-    }]
+  let received_sensor_register;
+  /*
+  let received_sensor_register = {
+    mac_address: <>,
+    type: <>,
+    value: <>,
+    time: <>
   };
+  */
 
-  MController.findOne({mac_address: mController})
-  .then(controller => {
-    //Error handling
-    //Controller does not exist
-    if (controller == null) {
-      throw {
-        error_code: 1,
-        error_description: "Controller does not exist"
-      }
-    }
-
-    //sensors do not exist
-    if (controller.sensors == null) {
-      let update ={sensors: [{
-        type: acquired_sensor,
-        readings: [{
-          value: reading_value,
-          time: Date.now().toString()
-        }]
-      }]
-    };
-      MController.findOneAndUpdate({mac_address: mController}, update)
-      .catch(err => {
-        console.log("Failed sensor udpate.")
-      })
-      return;
-    }
-
-    //new sensor is missing
-    if(controller.sensors.filter(sensor => {
-      return sensor.type == acquired_sensor;
-    }))
-    {
-      let new_sensor ={
-        type: acquired_sensor,
-        readings: [{
-          value: reading_value,
-          time: Date.now().toString()
-        }]
-      };
-      //Add new sensor
-      controller.sensors.push(new_sensor);
-
-      MController.findOneAndUpdate({mac_address: mController}, controller)
-      .catch(err => {
-        console.log("Failed new sensor udpate.")
-      })
-      return;
-    }
-
-    // Sensor update
-    for (const sensor_type of controller.sensors) {
-      if (sensor_type.type == acquired_sensor) {
-        let new_reading = {
-          time: Date.toString(),
-          value: reading_value
-        }
-        sensor_type.readings.push(new_reading);
-      }
-    }
-  })
- .catch(err => {
-  
-  if (err.error_code == 1) {
-    let controller = new microController({
-      mac_address: mController,
-      sensors: [{
-          type: acquired_sensor,
-          readings:[{
-            value: reading_value,
-            time: Date.now().toString()
-          }]
-      }]
-    });
-    controller.save();
+  try{
+    received_sensor_register = JSON.parse(message);
+  } catch (err) {
+    console.log(`${err} : ${message}`);
+    return;
   }
 
- })
+  let buffer_controller;
+
+  MController.findOne({mac_address: received_sensor_register.mac_address})
+  .then(controller => {
+    //if cant find controller
+    if (controller == null) {
+      throw "Controller is null."
+    }
+
+    //if found controller update
+    if (controller.sensors == undefined) {
+      controller.sensors = [];
+    }
+
+    //Update
+    for (const sensor of controller.sensors) {
+      if (sensor.type == received_sensor_register.type) {
+        sensor.readings.push({
+          time: received_sensor_register.time,
+          value: received_sensor_register.value
+        })
+      }
+    }
+
+    //if no update was done create new sensor
+    if (controller.sensors.filter( sensor => {
+      sensor.type == received_sensor_register.type
+    }).length > 0) 
+    {
+      let new_sensor = {
+        type: received_sensor_register.type,
+        readings: {
+          time: received_sensor_register.time,
+          value: received_sensor_register.value
+        }
+      }
+      controller.sensors.push(new_sensor);
+    }
+
+    /*controller.save()
+    .catch(err => {
+      console.log(err);
+    })*/
+
+    MController.findOneAndUpdate({mac_address: controller.mac_address}, {sensors: controller.sensors})
+    .catch( err => {
+      console.log(err);
+    })
+  })
+  .catch( err => {
+    //if did not found controller => create controller in the dB
+    let controller = new MController({
+      mac_address: received_sensor_register.mac_address,
+      sensors: {
+        type: received_sensor_register.type,
+        readings: {
+          time: received_sensor_register.time,
+          value: received_sensor_register.value
+        }
+      }
+    })
+    console.log(err);
+    controller.save();
+    console.log("New Controller created")
+  })
+
+  console.log(received_sensor_register);
 })
 
 //handle errors

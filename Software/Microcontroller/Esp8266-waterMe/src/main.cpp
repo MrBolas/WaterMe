@@ -51,8 +51,8 @@ SoilMoistureSensor SMS2(SMS2POWERPIN, SMSREADPIN, SMSVOLTAGE);
 SoilMoistureSensor SMS3(SMS3POWERPIN, SMSREADPIN, SMSVOLTAGE);
 SoilMoistureSensor SMS4(SMS4POWERPIN, SMSREADPIN, SMSVOLTAGE);
 
-const char* ssid = "Copacabana_Garden";
-const char* password = "pw_copaGarden";
+const char* ssid = "The Internet";
+const char* password = "Papaya0721";
 
 WiFiClient espClient;
 PubSubClient client(espClient);
@@ -273,94 +273,106 @@ void loop() {
   //Reading Verification
   readingVerification();
 
-  Serial.println("Before JSON");
-
   // Build JSON
-  timeClient.update();
-  doc["mac_address"] = MicroControllerID;
-  JsonArray sensors = doc.createNestedArray("sensors");
-  
-  JsonObject sensor1 = sensors.createNestedObject();
-  sensor1["type"] = "DHT1_temp";
-  sensor1["value"] = dht_temp_1;
-  sensor1["time"] = timeClient.getEpochTime();
-  
-  JsonObject sensor2 = sensors.createNestedObject();
-  sensor2["type"] = "DHT1_hum";
-  sensor2["value"] = dht_hum_1;
-  sensor2["time"] = timeClient.getEpochTime();
-
-  JsonObject sensor3 = sensors.createNestedObject();
-  sensor3["type"] = "DHT2_temp";
-  sensor3["value"] = dht_temp_2;
-  sensor3["time"] = timeClient.getEpochTime();
-
-  JsonObject sensor4 = sensors.createNestedObject();
-  sensor4["type"] = "DHT2_hum";
-  sensor4["value"] = dht_hum_2;
-  sensor4["time"] = timeClient.getEpochTime();
-
-  JsonObject sensor5 = sensors.createNestedObject();
-  sensor5["type"] = "SMS1";
-  sensor5["value"] = SMS1_voltage;
-  sensor5["time"] = timeClient.getEpochTime();
-
-  JsonObject sensor6 = sensors.createNestedObject();
-  sensor6["type"] = "SMS2";
-  sensor6["value"] = SMS2_voltage;
-  sensor6["time"] = timeClient.getEpochTime();
-
-  JsonObject sensor7 = sensors.createNestedObject();
-  sensor7["type"] = "SMS3";
-  sensor7["value"] = SMS3_voltage;
-  sensor7["time"] = timeClient.getEpochTime();
-
-  JsonObject sensor8 = sensors.createNestedObject();
-  sensor8["type"] = "SMS4";
-  sensor8["value"] = SMS4_voltage;
-  sensor8["time"] = timeClient.getEpochTime();
-
-
   // Serializes and punlishes JSON over MQTT
   char serialized_json[1024];
+
+  timeClient.update();
+  doc["mac_address"] = MicroControllerID;
+
+  doc["type"] = "DHT1_temp";
+  doc["value"] = dht_temp_1;
+  doc["time"] = timeClient.getEpochTime();
+
   serializeJson(doc, serialized_json);
+  Serial.println(serialized_json);
   client.publish(MicroControllerID.c_str(), serialized_json);
+  
+  doc["type"] = "DHT1_hum";
+  doc["value"] = dht_hum_1;
+  doc["time"] = timeClient.getEpochTime();
+
+  serializeJson(doc, serialized_json);
+  Serial.println(serialized_json);
+  client.publish(MicroControllerID.c_str(), serialized_json);
+
+  doc["type"] = "DHT2_temp";
+  doc["value"] = dht_temp_2;
+  doc["time"] = timeClient.getEpochTime();
+
+  serializeJson(doc, serialized_json);
+  Serial.println(serialized_json);
+  client.publish(MicroControllerID.c_str(), serialized_json);
+
+  doc["type"] = "DHT2_hum";
+  doc["value"] = dht_hum_2;
+  doc["time"] = timeClient.getEpochTime();
+
+  serializeJson(doc, serialized_json);
+  Serial.println(serialized_json);
+  client.publish(MicroControllerID.c_str(), serialized_json);
+
+  doc["type"] = "SMS1";
+  doc["value"] = SMS1_voltage;
+  doc["time"] = timeClient.getEpochTime();
+
+  serializeJson(doc, serialized_json);
+  Serial.println(serialized_json);
+  client.publish(MicroControllerID.c_str(), serialized_json);
+
+  doc["type"] = "SMS2";
+  doc["value"] = SMS2_voltage;
+  doc["time"] = timeClient.getEpochTime();
+
+  serializeJson(doc, serialized_json);
+  Serial.println(serialized_json);
+  client.publish(MicroControllerID.c_str(), serialized_json);
+
+  doc["type"] = "SMS3";
+  doc["value"] = SMS3_voltage;
+  doc["time"] = timeClient.getEpochTime();
+
+  serializeJson(doc, serialized_json);
+  Serial.println(serialized_json);
+  client.publish(MicroControllerID.c_str(), serialized_json);
+
+  doc["type"] = "SMS4";
+  doc["value"] = SMS4_voltage;
+  doc["time"] = timeClient.getEpochTime();
+
+  serializeJson(doc, serialized_json);
+  Serial.println(serialized_json);
+  client.publish(MicroControllerID.c_str(), serialized_json);
+
+  client.publish(MicroControllerID.c_str(), "test_string");
 
   //Update OLED
   updateOLED();
 
   // Update Serial and MQTT Broker
-  Serial.print("New temperature DHT_1 -> ");
-  Serial.println((MicroControllerID+"/"+String(dht_temp_1)).c_str());
-  //client.publish(temperature_topic, (MicroControllerID+"/DHT1/"+String(dht_temp_1)).c_str(), true);
+  Serial.print(timeClient.getFormattedTime());
+  Serial.println((" -> DHT_TEMP_1/"+String(dht_temp_1)).c_str());
   
-  Serial.print("New humidity DHT_1 -> ");
-  Serial.println((MicroControllerID+"/"+String(dht_hum_1)).c_str());
-  //client.publish(humidity_topic, (MicroControllerID+"/DHT1/"+String(dht_hum_1)).c_str(), true);
+  Serial.print(timeClient.getFormattedTime());
+  Serial.println((" -> DHT_HUM_1/"+String(dht_hum_1)).c_str());
 
-  Serial.print("New temperature DHT_2 -> ");
-  Serial.println((MicroControllerID+"/"+String(dht_temp_2)).c_str());
-  //client.publish(temperature_topic, (MicroControllerID+"/DHT2/"+String(dht_temp_2)).c_str(), true);
+  Serial.print(timeClient.getFormattedTime());
+  Serial.println((" -> DHT_TEMP_2/"+String(dht_temp_2)).c_str());
   
-  Serial.print("New humidity DHT_2 -> ");
-  Serial.println((MicroControllerID+"/"+String(dht_hum_2)).c_str());
-  //client.publish(humidity_topic, (MicroControllerID+"/DHT2/"+String(dht_hum_2)).c_str(), true);
+  Serial.print(timeClient.getFormattedTime());
+  Serial.println((" -> DHT_HUM_2/"+String(dht_hum_2)).c_str());
 
-  Serial.print("New SMS1 value -> ");
-  Serial.println((MicroControllerID+"/"+String(SMS1_voltage)).c_str());
-  //client.publish(soilMoisture_topic, (MicroControllerID+"/SMS1/"+String(SMS1_voltage)).c_str(), true);
+  Serial.print(timeClient.getFormattedTime());
+  Serial.println((" -> SMS1/"+String(SMS1_voltage)).c_str());
   
-  Serial.print("New SMS2 value -> ");
-  Serial.println((MicroControllerID+"/"+String(SMS2_voltage)).c_str());
-  //client.publish(soilMoisture_topic, (MicroControllerID+"/SMS2/"+String(SMS2_voltage)).c_str(), true);
+  Serial.print(timeClient.getFormattedTime());
+  Serial.println((" -> SMS2/"+String(SMS2_voltage)).c_str());
 
-  Serial.print("New SMS3 value -> ");
-  Serial.println((MicroControllerID+"/"+String(SMS3_voltage)).c_str());
-  //client.publish(soilMoisture_topic, (MicroControllerID+"/SMS3/"+String(SMS3_voltage)).c_str(), true);
+  Serial.print(timeClient.getFormattedTime());
+  Serial.println((" -> SMS3/"+String(SMS3_voltage)).c_str());
   
-  Serial.print("New SMS4 value -> ");
-  Serial.println((MicroControllerID+"/"+String(SMS4_voltage)).c_str());
-  //client.publish(soilMoisture_topic, (MicroControllerID+"/SMS4/"+String(SMS4_voltage)).c_str(), true);
+  Serial.print(timeClient.getFormattedTime());
+  Serial.println((" -> SMS4/"+String(SMS4_voltage)).c_str());
 
 /*
   if ((SMS1.beingWatered() 
