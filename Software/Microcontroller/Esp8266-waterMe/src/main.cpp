@@ -14,12 +14,12 @@
 
 #define DHTTYPE DHT22   // DHT 22
 
-#define DHT1PIN 0    
+#define DHT1PIN 13    
 #define DHT2PIN 3    
 
 #define SMS1POWERPIN 15
 #define SMS2POWERPIN 12
-#define SMS3POWERPIN 13
+#define SMS3POWERPIN 0
 #define SMS4POWERPIN 14
 #define SMSREADPIN A0
 #define SMSVOLTAGE 3.3
@@ -30,7 +30,7 @@
 
 #define MicroControllerID WiFi.macAddress()
 
-#define DEEP_SLEEP_TIMER 3e8  //microseconds
+#define DEEP_SLEEP_TIMER 3e8  //microseconds 5 minutes
 #define WAKE_UP_TIME 5e3     //milliseconds
 
 #define main_topic "WaterMe"
@@ -39,6 +39,7 @@ Adafruit_SSD1306 OLED = Adafruit_SSD1306(128, 32, &Wire);
 
 //Setup JSON
 DynamicJsonDocument doc(2048);
+char serialized_json[1024];
 
 DHT dht1(DHT1PIN, DHTTYPE);
 DHT dht2(DHT2PIN, DHTTYPE);
@@ -66,10 +67,10 @@ int dht_hum_1 = 0;
 int dht_temp_2 = 0;
 int dht_hum_2 = 0;
 
-float SMS1_voltage = NAN;
-float SMS2_voltage = NAN;
-float SMS3_voltage = NAN;
-float SMS4_voltage = NAN;
+float SMS1_value = NAN;
+float SMS2_value = NAN;
+float SMS3_value = NAN;
+float SMS4_value = NAN;
 
 void updateOLED()
 {
@@ -106,19 +107,19 @@ void updateOLED()
 
   // Horizontal Moisture Bars for Pot 1
   OLED.drawRect(0,16,50,8,1);
-  OLED.fillRect(0,16,50*(SMS1_voltage/SMSVOLTAGE),8,1);
+  OLED.fillRect(0,16,50*(SMS1_value/SMSVOLTAGE),8,1);
   OLED.setCursor(52,16);
   OLED.print("Pot1");
   OLED.drawRect(78,16,50,8,1);
-  OLED.fillRect(128-78*(SMS2_voltage/SMSVOLTAGE),16,128-78*(SMS2_voltage/SMSVOLTAGE),8,1);
+  OLED.fillRect(128-78*(SMS2_value/SMSVOLTAGE),16,128-78*(SMS2_value/SMSVOLTAGE),8,1);
   
   // Horizontal Moisture Bars for Pot 2
   OLED.drawRect(0,24,50,8,1);
-  OLED.fillRect(0,24,50*(SMS3_voltage/SMSVOLTAGE),8,1);
+  OLED.fillRect(0,24,50*(SMS3_value/SMSVOLTAGE),8,1);
   OLED.setCursor(52,24);
   OLED.print("Pot2");
   OLED.drawRect(78,24,50,8,1);
-  OLED.fillRect(128-78*(SMS4_voltage/SMSVOLTAGE),24,128-78*(SMS4_voltage/SMSVOLTAGE),8,1);
+  OLED.fillRect(128-78*(SMS4_value/SMSVOLTAGE),24,128-78*(SMS4_value/SMSVOLTAGE),8,1);
 
   OLED.display();
 }
@@ -196,6 +197,23 @@ void goToSleep()
   ESP.deepSleep(DEEP_SLEEP_TIMER); 
 }
 
+void publish_MQTT()
+{
+  serializeJson(doc, serialized_json);
+  Serial.println(serialized_json);
+  client.publish(MicroControllerID.c_str(), serialized_json);
+  delay(250); // create delay so other clients can cope with data flow
+}
+
+bool validReading(int reading)
+{
+  if (reading > 120 || reading < -10)
+  {
+    return false;
+  }
+  return true;
+}
+
 void setup() {
   //Setup Serial
   Serial.begin(115200);
@@ -231,6 +249,7 @@ void setup() {
   delay(1000);
 }
 
+
 void loop() {
   
   if (!client.connected()) {
@@ -246,22 +265,22 @@ void loop() {
   // Acquire Sensor information
   SMS1.turnPowerOn();
   delay(250);
-  SMS1_voltage = SMS1.readSensorVoltage();
+  SMS1_value = SMS1.getWaterVolume();
   SMS1.turnPowerOff();
 
   SMS2.turnPowerOn();
   delay(250);
-  SMS2_voltage = SMS2.readSensorVoltage();
+  SMS2_value = SMS2.getWaterVolume();
   SMS2.turnPowerOff();
 
   SMS3.turnPowerOn();
   delay(250);
-  SMS3_voltage = SMS3.readSensorVoltage();
+  SMS3_value = SMS3.getWaterVolume();
   SMS3.turnPowerOff();
 
   SMS4.turnPowerOn();
   delay(250);
-  SMS4_voltage = SMS4.readSensorVoltage();
+  SMS4_value = SMS4.getWaterVolume();
   SMS4.turnPowerOff();
 
   dht_temp_1 = dht1.readTemperature();
@@ -272,79 +291,6 @@ void loop() {
 
   //Reading Verification
   readingVerification();
-
-  // Build JSON
-  // Serializes and punlishes JSON over MQTT
-  char serialized_json[1024];
-
-  timeClient.update();
-  doc["mac_address"] = MicroControllerID;
-
-  doc["type"] = "DHT1_temp";
-  doc["value"] = dht_temp_1;
-  doc["time"] = timeClient.getEpochTime();
-
-  serializeJson(doc, serialized_json);
-  Serial.println(serialized_json);
-  client.publish(MicroControllerID.c_str(), serialized_json);
-  
-  doc["type"] = "DHT1_hum";
-  doc["value"] = dht_hum_1;
-  doc["time"] = timeClient.getEpochTime();
-
-  serializeJson(doc, serialized_json);
-  Serial.println(serialized_json);
-  client.publish(MicroControllerID.c_str(), serialized_json);
-
-  doc["type"] = "DHT2_temp";
-  doc["value"] = dht_temp_2;
-  doc["time"] = timeClient.getEpochTime();
-
-  serializeJson(doc, serialized_json);
-  Serial.println(serialized_json);
-  client.publish(MicroControllerID.c_str(), serialized_json);
-
-  doc["type"] = "DHT2_hum";
-  doc["value"] = dht_hum_2;
-  doc["time"] = timeClient.getEpochTime();
-
-  serializeJson(doc, serialized_json);
-  Serial.println(serialized_json);
-  client.publish(MicroControllerID.c_str(), serialized_json);
-
-  doc["type"] = "SMS1";
-  doc["value"] = SMS1_voltage;
-  doc["time"] = timeClient.getEpochTime();
-
-  serializeJson(doc, serialized_json);
-  Serial.println(serialized_json);
-  client.publish(MicroControllerID.c_str(), serialized_json);
-
-  doc["type"] = "SMS2";
-  doc["value"] = SMS2_voltage;
-  doc["time"] = timeClient.getEpochTime();
-
-  serializeJson(doc, serialized_json);
-  Serial.println(serialized_json);
-  client.publish(MicroControllerID.c_str(), serialized_json);
-
-  doc["type"] = "SMS3";
-  doc["value"] = SMS3_voltage;
-  doc["time"] = timeClient.getEpochTime();
-
-  serializeJson(doc, serialized_json);
-  Serial.println(serialized_json);
-  client.publish(MicroControllerID.c_str(), serialized_json);
-
-  doc["type"] = "SMS4";
-  doc["value"] = SMS4_voltage;
-  doc["time"] = timeClient.getEpochTime();
-
-  serializeJson(doc, serialized_json);
-  Serial.println(serialized_json);
-  client.publish(MicroControllerID.c_str(), serialized_json);
-
-  client.publish(MicroControllerID.c_str(), "test_string");
 
   //Update OLED
   updateOLED();
@@ -363,16 +309,66 @@ void loop() {
   Serial.println((" -> DHT_HUM_2/"+String(dht_hum_2)).c_str());
 
   Serial.print(timeClient.getFormattedTime());
-  Serial.println((" -> SMS1/"+String(SMS1_voltage)).c_str());
+  Serial.println((" -> SMS1/"+String(SMS1_value)).c_str());
   
   Serial.print(timeClient.getFormattedTime());
-  Serial.println((" -> SMS2/"+String(SMS2_voltage)).c_str());
+  Serial.println((" -> SMS2/"+String(SMS2_value)).c_str());
 
   Serial.print(timeClient.getFormattedTime());
-  Serial.println((" -> SMS3/"+String(SMS3_voltage)).c_str());
+  Serial.println((" -> SMS3/"+String(SMS3_value)).c_str());
   
   Serial.print(timeClient.getFormattedTime());
-  Serial.println((" -> SMS4/"+String(SMS4_voltage)).c_str());
+  Serial.println((" -> SMS4/"+String(SMS4_value)).c_str());
+
+  // Build JSON
+  // Serializes and punlishes JSON over MQTT
+  timeClient.update();
+  doc["mac_address"] = MicroControllerID;
+  doc["time"] = timeClient.getEpochTime();
+
+  if (validReading(dht_temp_1))
+  {
+    doc["type"] = "DHT1_temp";
+    doc["value"] = dht_temp_1;
+    publish_MQTT();
+  }
+
+  if (validReading(dht_hum_1))
+  {
+    doc["type"] = "DHT1_hum";
+    doc["value"] = dht_hum_1;
+    publish_MQTT();
+  }
+
+  if (validReading(dht_temp_2))
+  {
+    doc["type"] = "DHT2_temp";
+    doc["value"] = dht_temp_2;
+    publish_MQTT();
+  }
+
+  if (validReading(dht_hum_2))
+  {
+    doc["type"] = "DHT2_hum";
+    doc["value"] = dht_hum_2;
+    publish_MQTT();
+  }
+
+  doc["type"] = "SMS1";
+  doc["value"] = SMS1_value;
+  publish_MQTT();
+
+  doc["type"] = "SMS2";
+  doc["value"] = SMS2_value;
+  publish_MQTT();
+
+  doc["type"] = "SMS3";
+  doc["value"] = SMS3_value;
+  publish_MQTT();
+
+  doc["type"] = "SMS4";
+  doc["value"] = SMS4_value;
+  publish_MQTT();
 
 /*
   if ((SMS1.beingWatered() 

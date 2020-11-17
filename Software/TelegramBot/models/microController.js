@@ -4,10 +4,12 @@ const microControllerSchema = mongoose.Schema({
     //_id: {type: Number, required: true},
     mac_address: {type: String, required: true},
     sensors: [{
+        _id: false,
         type: {type: String, required: true},
         readings: [{
+            _id: false,
             time: {type: String, required: true},
-            value: {type: Number, required: true}
+            value: {type: String, required: true}
         }]
     }],
 });
