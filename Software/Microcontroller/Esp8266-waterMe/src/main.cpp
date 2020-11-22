@@ -265,22 +265,22 @@ void loop() {
   // Acquire Sensor information
   SMS1.turnPowerOn();
   delay(250);
-  SMS1_value = SMS1.getWaterVolume();
+  SMS1_value = SMS1.readSensorVoltage();
   SMS1.turnPowerOff();
 
   SMS2.turnPowerOn();
   delay(250);
-  SMS2_value = SMS2.getWaterVolume();
+  SMS2_value = SMS2.readSensorVoltage();
   SMS2.turnPowerOff();
 
   SMS3.turnPowerOn();
   delay(250);
-  SMS3_value = SMS3.getWaterVolume();
+  SMS3_value = SMS3.readSensorVoltage();
   SMS3.turnPowerOff();
 
   SMS4.turnPowerOn();
   delay(250);
-  SMS4_value = SMS4.getWaterVolume();
+  SMS4_value = SMS4.readSensorVoltage();
   SMS4.turnPowerOff();
 
   dht_temp_1 = dht1.readTemperature();

@@ -4,16 +4,19 @@
 			"path": "."
 		},
 		{
-			"name": "Esp8266-waterMe",
-			"path": "Software\\Microcontroller\\Esp8266-waterMe"
-		},
-		{
 			"name": "WaterMeMQTTClient",
 			"path": "..\\WaterMeMQTTClient"
 		},
 		{
 			"name": "WaterMeTelegramBot",
 			"path": "..\\WaterMeTelegramBot"
+		},
+		{
+			"name": "Esp8266-waterMe",
+			"path": "Software\\Microcontroller\\Esp8266-waterMe"
+		},
+		{
+			"path": "..\\WaterMeSettings"
 		}
 	],
 	"settings": {
