@@ -25,7 +25,6 @@
 #define SMSVOLTAGE 3.3
 
 #define mqtt_server "94.62.211.190"
-#define mqtt_server_dev "test.mosquitto.org"
 //#define mqtt_user "your_username"
 //#define mqtt_password "your_password"
 
@@ -58,7 +57,6 @@ const char* password = "Papaya0721";
 
 WiFiClient espClient;
 PubSubClient client(espClient);
-PubSubClient client_dev(espClient);
 const long utcOffsetInSeconds = 3600;
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "pool.ntp.org", utcOffsetInSeconds);
@@ -179,7 +177,7 @@ void reconnect() {
     // If you do not want to use a username and password, change next line to
      if (client.connect("client")) {
     //if (client.connect("ESP8266Client", mqtt_user, mqtt_password)) {
-      Serial.println("connected");
+      Serial.println("connected to Brooker");
     } else {
       Serial.print("failed, rc=");
       Serial.print(client.state());
@@ -204,7 +202,6 @@ void publish_MQTT()
   serializeJson(doc, serialized_json);
   Serial.println(serialized_json);
   client.publish(MicroControllerID.c_str(), serialized_json);
-  client_dev.publish(MicroControllerID.c_str(), serialized_json);
   delay(250); // create delay so other clients can cope with data flow
 }
 
@@ -230,7 +227,6 @@ void setup() {
   //Setup Wifi
   setup_wifi();
   client.setServer(mqtt_server, 1883);
-  client_dev.setServer(mqtt_server_dev, 1883);
 
   // Turn ON both SMS
   pinMode(SMS1POWERPIN, OUTPUT);
@@ -263,7 +259,6 @@ void loop() {
 
   //Sends wake notification to main topic
   client.publish(main_topic, MicroControllerID.c_str());
-  client_dev.publish(main_topic, MicroControllerID.c_str());
 
   unsigned long time = millis();
 
