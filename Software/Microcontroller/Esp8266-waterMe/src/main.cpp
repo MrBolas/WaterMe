@@ -14,6 +14,7 @@
 
 #define DHTTYPE DHT22   // DHT 22
 
+#define DHTPOWERPIN 2
 #define DHT1PIN 13    
 #define DHT2PIN 3    
 
@@ -169,6 +170,11 @@ void setup_wifi() {
   updateOLED();
 }
 
+void setDHTPowerPin(bool state)
+{
+  digitalWrite(DHTPOWERPIN, state);
+}
+
 void reconnect() {
   // Loop until we're reconnected
   while (!client.connected()) {
@@ -192,6 +198,8 @@ void goToSleep()
 {
   OLED.clearDisplay();
   OLED.display();
+
+  setDHTPowerPin(LOW);
 
   //enter deep sleep in microseconds
   ESP.deepSleep(DEEP_SLEEP_TIMER); 
@@ -228,6 +236,10 @@ void setup() {
   setup_wifi();
   client.setServer(mqtt_server, 1883);
 
+  // DHT Power Pin Mode
+  pinMode(DHTPOWERPIN, OUTPUT);
+  digitalWrite(DHTPOWERPIN, LOW);
+
   // Turn ON both SMS
   pinMode(SMS1POWERPIN, OUTPUT);
   digitalWrite(SMS1POWERPIN, LOW);
@@ -241,14 +253,8 @@ void setup() {
   pinMode(SMS4POWERPIN, OUTPUT);
   digitalWrite(SMS4POWERPIN, LOW);
 
-  //initializa DHT22 sensors
-  dht1.begin();
-  dht2.begin();
 
-  // Delay to initialize DHT22 sensors
-  delay(1000);
 }
-
 
 void loop() {
   
@@ -261,6 +267,17 @@ void loop() {
   client.publish(main_topic, MicroControllerID.c_str());
 
   unsigned long time = millis();
+  
+  // Turn on DHT sensors
+  setDHTPowerPin(HIGH);
+  delay(500);
+
+  //initializa DHT22 sensors
+  dht1.begin();
+  dht2.begin();
+
+  // Delay to initialize DHT22 sensors
+  delay(1000);
 
   // Acquire Sensor information
   SMS1.turnPowerOn();
