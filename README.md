@@ -137,6 +137,7 @@ Future work can allow by directional updates to the microcontrollers, altough ri
 
 ##### Technological stack
 ###### Arduino
+Available in this [repo](https://github.com/MrBolas/WaterMe/tree/main/Software/Microcontroller).
 C++, PIO Home
 ```C++
 depending_libraries = 
@@ -152,6 +153,7 @@ depending_libraries =
 ```
 
 ###### MQTT Client
+Available in this [repo](https://github.com/MrBolas/WaterMeMQTTClient).
 - Nodejs
 - Javascript dependencies:
 ```Javascript
@@ -162,7 +164,13 @@ const mqtt = require('mqtt');
 #### Display System
 The display system is composed by a Telegram bot and a Web application.
 
+This system relies on a decision engine. This is what allows the web application or the telegram bot to send notifications to water the plants based on the data.
+
+This WaterMe Engine is available in this [repo](https://github.com/MrBolas/WaterMeSettings).
+
 ##### Telegram bot
+Available in this [repo](https://github.com/MrBolas/WaterMeTelegramBot).
+
 The idea behind a telegram is having a quick interface with notifications that is compatible with a high volume of devices, including wearable devices. The motivation is on an initial phase, where the watering process is not automated to at least send a notification to notify the user to manually water the plants.
 
 This telegram bot is in active development and its served by a dockerized container.
@@ -177,6 +185,8 @@ const cron = require('node-cron');
 ```
 
 ##### Web application
+Available in this [repo](https://github.com/MrBolas/WaterMeWeb).
+
 < In active development >
 
 ### Hidric System Design (Future work)
